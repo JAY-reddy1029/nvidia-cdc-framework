@@ -23,25 +23,50 @@ This framework processes data from SAP-like source tables through a clean, audit
 
 ## Architecture
 
-┌──────────────────────────────────────────────────────┐
-│             GCP Project                              │
-├──────────────────────────────────────────────────────┤
-│                                                      │
-│  📊 BIGQUERY (Storage)                               │
-│  ├── raw_layer/        Source data (SAP-like)        │
-│  ├── cdc_layer/        Clean processed data          │
-│  ├── audit_layer/      Operational monitoring (7)    │
-│  └── dataform_assertions/  Data quality failures     │
-│                                                      │
-│  🛠️ DATAFORM (Pipeline Tool)                         │
-│  └── Repository: my-cdc-framework                    │
-│      ├── definitions/sources/  (declarations)        │
-│      └── definitions/transformations/  (pipelines)   │
-│                                                      │
-└──────────────────────────────────────────────────────┘
+The framework follows a medallion architecture pattern with separate operational monitoring:
+
+```
+                    ┌─────────────────────────┐
+                    │   SAP / Source System   │
+                    │      (Simulated)        │
+                    └───────────┬─────────────┘
+                                │
+                                ▼
+                  ┌──────────────────────────┐
+                  │      raw_layer           │
+                  │  (Bronze - Source Data)  │
+                  ├──────────────────────────┤
+                  │  • customers (10 rows)   │
+                  │  • orders (27 rows)      │
+                  └───────────┬──────────────┘
+                              │
+                              │ Dataform Pipelines
+                              ▼
+                  ┌──────────────────────────┐       ┌──────────────────────┐
+                  │      cdc_layer           │       │   audit_layer        │
+                  │  (Silver - Clean Data)   │──────▶│  (Operational Data)  │
+                  ├──────────────────────────┤ logs  ├──────────────────────┤
+                  │  • customers (10)        │       │  • pipeline_audit    │
+                  │  • orders (13)           │       │  • error_log         │
+                  │  • orders_backfill_stg   │       │  • duplicate_log     │
+                  └───────────┬──────────────┘       │  • backfill_log      │
+                              │                      │  • schema_registry   │
+                              │ Assertions           │  • schema_drift_log  │
+                              ▼                      │  • pipeline_checkpoint│
+                  ┌──────────────────────────┐       └──────────────────────┘
+                  │   dataform_assertions    │
+                  │  (Quality Failures Only) │
+                  └──────────────────────────┘
+```
+
+### Data Flow
+
+1. **Source data** lands in raw_layer (untouched, read-only)
+2. **Dataform pipelines** transform data into cdc_layer (clean, deduplicated)
+3. **Audit events** logged to audit_layer (7 specialized tables)
+4. **Failed assertions** isolated in dataform_assertions
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed technical design.
-
 ---
 
 ## Features
