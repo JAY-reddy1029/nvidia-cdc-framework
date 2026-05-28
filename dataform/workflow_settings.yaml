@@ -1,0 +1,9 @@
+defaultProject: project-a2f79f6e-db67-4726-be8
+defaultDataset: cdc_layer
+defaultAssertionDataset: dataform_assertions
+dataformCoreVersion: 3.0.52
+vars:
+  backfill_start_date: "2026-05-05"
+  backfill_end_date: "2026-05-07"
+  backfill_reason: "Pipeline outage recovery"
+  backfill_requested_by: "p.v.jay2003@gmail.com"
