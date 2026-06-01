@@ -4,23 +4,23 @@ steps:
     args: ['clone', 'https://github.com/JAY-reddy1029/nvidia-cdc-framework.git', '.']
     id: 'clone-repo'
 
-  # Step 2: Install Node.js dependencies for Dataform
+  # Step 2: Install Dataform CLI
   - name: 'gcr.io/cloud-builders/npm'
     args: ['install', '-g', '@dataform/cli']
     id: 'install-dataform-cli'
 
-  # Step 3: Install Dataform workspace dependencies
+  # Step 3: Install workspace dependencies
   - name: 'gcr.io/cloud-builders/npm'
     dir: 'dataform'
     args: ['install']
     id: 'install-dataform-deps'
 
-  # Step 4: Compile Dataform workspace
+  # Step 4: Compile Dataform
   - name: 'gcr.io/cloud-builders/npm'
     args: ['run', 'dataform', 'compile', '--dir=dataform']
     id: 'dataform-compile'
 
-  # Step 5: Run Dataform release deploy
+  # Step 5: Deploy to production
   - name: 'gcr.io/cloud-builders/npm'
     args:
       - 'run'
@@ -35,6 +35,9 @@ steps:
 
 # Build timeout
 timeout: '1800s'
+
+# Logging configuration - use Cloud Logging only
+logging: CLOUD_LOGGING_ONLY
 
 # Substitutions
 substitutions:
