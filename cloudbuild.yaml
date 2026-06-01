@@ -36,8 +36,9 @@ steps:
 # Build timeout
 timeout: '1800s'
 
-# Logging configuration - use Cloud Logging only
-logging: CLOUD_LOGGING_ONLY
+# Build options
+options:
+  logging: CLOUD_LOGGING_ONLY
 
 # Substitutions
 substitutions:
