@@ -4,34 +4,30 @@ steps:
     args: ['clone', '--depth', '1', 'https://github.com/JAY-reddy1029/nvidia-cdc-framework.git', '/workspace/repo']
     id: 'clone-repo'
 
-  # Step 2: Install Dataform CLI
+  # Step 2: Install Dataform CLI and compile
   - name: 'gcr.io/cloud-builders/npm'
-    args: ['install', '-g', '@dataform/cli@3.0.52']
-    id: 'install-dataform-cli'
-
-  # Step 3: Compile Dataform
-  - name: 'gcr.io/cloud-builders/gke-deploy'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
+        npm install -g @dataform/cli@3.0.52
         cd /workspace/repo/dataform
-        /root/.npm-global/bin/dataform compile
+        dataform compile
     id: 'dataform-compile'
 
-  # Step 4: Deploy to production
-  - name: 'gcr.io/cloud-builders/gke-deploy'
+  # Step 3: Deploy to production
+  - name: 'gcr.io/cloud-builders/npm'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         cd /workspace/repo/dataform
-        /root/.npm-global/bin/dataform release deploy \
+        dataform release deploy \
           --project-id=project-a2f79f6e-db67-4726-be8 \
           --release-config-name=production
-    id: 'dataform-deploy'
     env:
       - 'DATAFORM_CORE_VERSION=3.0.52'
+    id: 'dataform-deploy'
 
 # Build timeout
 timeout: '1800s'
