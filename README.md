@@ -209,3 +209,7 @@ Location: Hyderabad, India
 ## Approach B Cloud Build - Final Test (01/06/2026)
 - Using bash commands with Dataform CLI
 - Testing automated deployment pipeline
+
+## Approach B Cloud Build - NPM Container Test (01/06/2026 - v2)
+- Using npm container for all bash commands
+- Dataform CLI available in all steps
