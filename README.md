@@ -218,3 +218,8 @@ Location: Hyderabad, India
 - Single step compile + deploy
 - Service account with all required roles
 - Ready for production
+
+## Approach B Cloud Build - Working Deploy Command (01/06/2026)
+- Using dataform run --release-config
+- Compile + Deploy in single step
+- Testing automated CI/CD
