@@ -1,0 +1,127 @@
+config {
+  type: "operations",
+  schema: "cdc_layer",
+  name: "dim_customers_scd2_merge",
+  description: "Production SCD Type 2 merge for customer dimension - handles inserts, updates with full history",
+  tags: ["scd2", "daily", "dimension"]
+}
+
+-- ===========================================
+-- STEP 1: MERGE to handle new customers and close changed ones
+-- ===========================================
+MERGE `project-a2f79f6e-db67-4726-be8.cdc_layer.dim_customers_scd2` AS target
+USING (
+  SELECT
+    customer_id,
+    customer_name,
+    city,
+    country,
+    customer_type,
+    credit_limit,
+    created_date,
+    last_updated
+  FROM `project-a2f79f6e-db67-4726-be8.raw_layer.customers`
+) AS source
+ON target.customer_id = source.customer_id
+  AND target.is_current = TRUE
+
+WHEN MATCHED AND (
+  target.customer_name != source.customer_name OR
+  target.city != source.city OR
+  target.country != source.country OR
+  target.customer_type != source.customer_type OR
+  target.credit_limit != source.credit_limit
+) THEN
+  UPDATE SET
+    valid_to = CURRENT_TIMESTAMP(),
+    is_current = FALSE,
+    scd_action = 'CLOSED',
+    scd_change_reason = 'Data changed - closing old version',
+    scd_processed_at = CURRENT_TIMESTAMP()
+
+WHEN NOT MATCHED BY TARGET THEN
+  INSERT (
+    scd_id, customer_id, customer_name, city, country, customer_type,
+    credit_limit, created_date, last_updated, valid_from, valid_to,
+    is_current, scd_action, scd_change_reason, scd_processed_at
+  )
+  VALUES (
+    GENERATE_UUID(),
+    source.customer_id,
+    source.customer_name,
+    source.city,
+    source.country,
+    source.customer_type,
+    source.credit_limit,
+    source.created_date,
+    source.last_updated,
+    CURRENT_TIMESTAMP(),
+    TIMESTAMP('9999-12-31 23:59:59'),
+    TRUE,
+    'INSERT',
+    'New customer added',
+    CURRENT_TIMESTAMP()
+  );
+
+---
+
+-- ===========================================
+-- STEP 2: INSERT new versions for closed customers
+-- (with idempotency check - no double inserts!)
+-- ===========================================
+INSERT INTO `project-a2f79f6e-db67-4726-be8.cdc_layer.dim_customers_scd2`
+(scd_id, customer_id, customer_name, city, country, customer_type,
+ credit_limit, created_date, last_updated, valid_from, valid_to,
+ is_current, scd_action, scd_change_reason, scd_processed_at)
+SELECT
+  GENERATE_UUID(),
+  raw.customer_id,
+  raw.customer_name,
+  raw.city,
+  raw.country,
+  raw.customer_type,
+  raw.credit_limit,
+  raw.created_date,
+  raw.last_updated,
+  CURRENT_TIMESTAMP(),
+  TIMESTAMP('9999-12-31 23:59:59'),
+  TRUE,
+  'UPDATE',
+  'New version after change',
+  CURRENT_TIMESTAMP()
+FROM `project-a2f79f6e-db67-4726-be8.raw_layer.customers` raw
+WHERE raw.customer_id IN (
+  SELECT customer_id
+  FROM `project-a2f79f6e-db67-4726-be8.cdc_layer.dim_customers_scd2`
+  WHERE is_current = FALSE
+    AND DATE(valid_to) = CURRENT_DATE()
+    AND scd_action = 'CLOSED'
+)
+-- IDEMPOTENCY CHECK: Don't insert if current version already exists!
+AND raw.customer_id NOT IN (
+  SELECT customer_id
+  FROM `project-a2f79f6e-db67-4726-be8.cdc_layer.dim_customers_scd2`
+  WHERE is_current = TRUE
+);
+
+---
+
+-- ===========================================
+-- STEP 3: LOG to pipeline_audit
+-- ===========================================
+INSERT INTO `project-a2f79f6e-db67-4726-be8.audit_layer.pipeline_audit`
+(audit_id, pipeline_name, table_name, load_type, start_time, end_time,
+ duration_seconds, rows_processed, status, error_message, created_by)
+VALUES (
+  GENERATE_UUID(),
+  'dim_customers_scd2_merge',
+  'cdc_layer.dim_customers_scd2',
+  'SCD_TYPE_2',
+  CURRENT_TIMESTAMP(),
+  CURRENT_TIMESTAMP(),
+  0,
+  (SELECT COUNT(*) FROM `project-a2f79f6e-db67-4726-be8.cdc_layer.dim_customers_scd2`),
+  'SUCCESS',
+  NULL,
+  SESSION_USER()
+);
