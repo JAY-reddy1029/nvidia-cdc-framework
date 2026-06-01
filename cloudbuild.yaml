@@ -11,15 +11,15 @@ steps:
 
   # Step 3: Compile Dataform workspace
   - name: 'gcr.io/cloud-builders/npm'
-    dir: '/workspace/repo'
-    args: ['run', 'dataform', 'compile', '--dir=dataform']
+    dir: '/workspace/repo/dataform'
+    args: ['exec', 'dataform', 'compile']
     id: 'dataform-compile'
 
   # Step 4: Deploy to production
   - name: 'gcr.io/cloud-builders/npm'
-    dir: '/workspace/repo'
+    dir: '/workspace/repo/dataform'
     args:
-      - 'run'
+      - 'exec'
       - 'dataform'
       - 'release'
       - 'deploy'
@@ -35,9 +35,3 @@ timeout: '1800s'
 # Build options
 options:
   logging: CLOUD_LOGGING_ONLY
-
-# Substitutions
-substitutions:
-  _PROJECT_ID: 'project-a2f79f6e-db67-4726-be8'
-  _DATAFORM_VERSION: '3.0.52'
-  _RELEASE_CONFIG: 'production'
