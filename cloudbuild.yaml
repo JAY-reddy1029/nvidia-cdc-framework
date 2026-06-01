@@ -9,26 +9,21 @@ steps:
     args: ['install', '-g', '@dataform/cli']
     id: 'install-dataform-cli'
 
-  # Step 3: Compile Dataform (validate all SQLX files)
+  # Step 3: Install Dataform workspace dependencies
   - name: 'gcr.io/cloud-builders/npm'
     dir: 'dataform'
     args: ['install']
     id: 'install-dataform-deps'
 
-  # Step 4: Compile and validate the Dataform workspace
-  - name: 'gcr.io/cloud-builders/gke-deploy'
-    args: 
-      - run
-      - -f
-      - dataform/
-    env:
-      - 'DATAFORM_CLI_VERSION=3.0.52'
+  # Step 4: Compile Dataform workspace
+  - name: 'gcr.io/cloud-builders/npm'
+    args: ['run', 'dataform', 'compile', '--dir=dataform']
     id: 'dataform-compile'
 
-  # Step 5: Run Dataform release deploy to production
+  # Step 5: Run Dataform release deploy
   - name: 'gcr.io/cloud-builders/npm'
     args:
-      - run
+      - 'run'
       - 'dataform'
       - 'release'
       - 'deploy'
@@ -41,20 +36,8 @@ steps:
 # Build timeout
 timeout: '1800s'
 
-# Optional: Send notification on success/failure
-onFailure:
-  - 'echo Deployment failed! Check logs above.'
-
-onSuccess:
-  - 'echo Dataform deployment successful! Files compiled and released to production.'
-
-# Substitute variables (optional - for dynamic project IDs)
+# Substitutions
 substitutions:
   _PROJECT_ID: 'project-a2f79f6e-db67-4726-be8'
   _DATAFORM_VERSION: '3.0.52'
   _RELEASE_CONFIG: 'production'
-
-# Images used in the build
-images:
-  - 'gcr.io/cloud-builders/npm'
-  - 'gcr.io/cloud-builders/git'
