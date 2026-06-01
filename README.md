@@ -205,3 +205,8 @@ Built as a hands-on learning project to prepare for production data engineering 
 **Jayachandra Reddy (Jay)**  
 Email: p.v.jay2003@gmail.com  
 Location: Hyderabad, India
+
+## Day 8 (01/06/2026): Cloud Build CI/CD Setup Complete ✅
+- Dataform files migrated to GitHub
+- Cloud Build trigger enabled
+- Auto-deployment ready
