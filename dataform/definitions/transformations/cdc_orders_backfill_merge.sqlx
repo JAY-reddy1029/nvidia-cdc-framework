@@ -1,43 +1,43 @@
 config {
-      type: "operations",
-        schema: "cdc_layer",
-          name: "cdc_orders_backfill_merge",
-            description: "Merges backfill staging into cdc_layer.orders and finalizes backfill_log",
-              tags: ["backfill", "on_demand"],
-                dependencies: ["orders_backfill_staging"]
-                }
+  type: "operations",
+  schema: "cdc_layer",
+  name: "cdc_orders_backfill_merge",
+  description: "Merges backfill staging into cdc_layer.orders and finalizes backfill_log",
+  tags: ["backfill", "on_demand"],
+  dependencies: ["orders_backfill_staging"]
+}
 
-                -- Step 1: MERGE the backfill staging data into the real cdc_layer.orders
-                MERGE `project-a2f79f6e-db67-4726-be8.cdc_layer.orders` T
-                USING ${ref({schema: "cdc_layer", name: "orders_backfill_staging"})} S
-                ON T.order_id = S.order_id
-                WHEN MATCHED THEN UPDATE SET
-                  customer_id = S.customer_id,
-                    product_name = S.product_name,
-                      quantity = S.quantity,
-                        amount = S.amount,
-                          order_date = S.order_date,
-                            status = S.status,
-                              changetype = S.changetype,
-                                last_updated = S.last_updated,
-                                  cdc_processed_at = S.cdc_processed_at
-                                  WHEN NOT MATCHED THEN INSERT (
-                                    order_id, customer_id, product_name, quantity, amount, order_date,
-                                      status, changetype, last_updated, cdc_processed_at
-                                      )
-                                      VALUES (
-                                        S.order_id, S.customer_id, S.product_name, S.quantity, S.amount, S.order_date,
-                                          S.status, S.changetype, S.last_updated, S.cdc_processed_at
-                                          );
+-- Step 1: MERGE the backfill staging data into the real cdc_layer.orders
+MERGE `project-a2f79f6e-db67-4726-be8.cdc_layer.orders` T
+USING ${ref({schema: "cdc_layer", name: "orders_backfill_staging"})} S
+ON T.order_id = S.order_id
+WHEN MATCHED THEN UPDATE SET
+  customer_id = S.customer_id,
+  product_name = S.product_name,
+  quantity = S.quantity,
+  amount = S.amount,
+  order_date = S.order_date,
+  status = S.status,
+  changetype = S.changetype,
+  last_updated = S.last_updated,
+  cdc_processed_at = S.cdc_processed_at
+WHEN NOT MATCHED THEN INSERT (
+  order_id, customer_id, product_name, quantity, amount, order_date,
+  status, changetype, last_updated, cdc_processed_at
+)
+VALUES (
+  S.order_id, S.customer_id, S.product_name, S.quantity, S.amount, S.order_date,
+  S.status, S.changetype, S.last_updated, S.cdc_processed_at
+);
 
-                                          ---
+---
 
-                                          -- Step 2: Update backfill_log to COMPLETED
-                                          UPDATE `project-a2f79f6e-db67-4726-be8.audit_layer.backfill_log`
-                                          SET 
-                                            status = 'COMPLETED',
-                                              execution_end = CURRENT_TIMESTAMP(),
-                                                rows_affected = (SELECT COUNT(*) FROM ${ref({schema: "cdc_layer", name: "orders_backfill_staging"})})
-                                                WHERE pipeline_name = 'cdc_orders_backfill'
-                                                  AND status = 'IN_PROGRESS'
-                                                    AND DATE(execution_start) = CURRENT_DATE();
+-- Step 2: Update backfill_log to COMPLETED
+UPDATE `project-a2f79f6e-db67-4726-be8.audit_layer.backfill_log`
+SET
+  status = 'COMPLETED',
+  execution_end = CURRENT_TIMESTAMP(),
+  rows_affected = (SELECT COUNT(*) FROM ${ref({schema: "cdc_layer", name: "orders_backfill_staging"})})
+WHERE pipeline_name = 'cdc_orders_backfill'
+  AND status = 'IN_PROGRESS'
+  AND DATE(execution_start) = CURRENT_DATE();
