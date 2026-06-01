@@ -213,3 +213,8 @@ Location: Hyderabad, India
 ## Approach B Cloud Build - NPM Container Test (01/06/2026 - v2)
 - Using npm container for all bash commands
 - Dataform CLI available in all steps
+
+## Approach B Cloud Build - Final Working Version (01/06/2026)
+- Single step compile + deploy
+- Service account with all required roles
+- Ready for production
