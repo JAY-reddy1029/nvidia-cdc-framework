@@ -4,7 +4,7 @@ steps:
     args: ['clone', '--depth', '1', 'https://github.com/JAY-reddy1029/nvidia-cdc-framework.git', '/workspace/repo']
     id: 'clone-repo'
 
-  # Step 2: Compile and Deploy in one step
+  # Step 2: Compile and Deploy
   - name: 'gcr.io/cloud-builders/npm'
     entrypoint: 'bash'
     args:
@@ -20,10 +20,10 @@ steps:
         echo "Compiling Dataform..."
         dataform compile
         
-        echo "Deploying to production..."
-        dataform release deploy \
-          --project-id=project-a2f79f6e-db67-4726-be8 \
-          --release-config-name=production
+        echo "Deploying to production release config..."
+        dataform run \
+          --project-id project-a2f79f6e-db67-4726-be8 \
+          --release-config production
         
         echo "Deployment completed successfully!"
     env:
