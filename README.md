@@ -223,3 +223,9 @@ Location: Hyderabad, India
 - Using dataform run --release-config
 - Compile + Deploy in single step
 - Testing automated CI/CD
+
+## Approach B Cloud Build - CI/CD Validation Pipeline (01/06/2026)
+- GitHub push → Cloud Build trigger
+- Compile validation on every commit to main
+- Dataform native scheduling (Approach A) handles deployments
+- Combined CI/CD workflow for reliability
