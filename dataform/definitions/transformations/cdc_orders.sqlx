@@ -1,0 +1,81 @@
+config {
+  type: "table",
+  schema: "cdc_layer",
+  name: "orders",
+  description: "CDC orders - Delta Load with partitioning and clustering",
+  tags: ["delta_load", "daily"],
+
+  bigquery: {
+    partitionBy: "order_date",
+    clusterBy: ["customer_id", "status"]
+  },
+
+  assertions: {
+    uniqueKey: ["order_id"],
+    nonNull: ["order_id", "customer_id", "product_name", "last_updated"],
+    rowConditions: [
+      "quantity > 0",
+      "amount > 0",
+      "changetype IN ('I', 'U', 'D')",
+      "status IN ('Confirmed', 'Cancelled', 'Pending')"
+    ]
+  }
+}
+
+pre_operations {
+  INSERT INTO `project-a2f79f6e-db67-4726-be8.audit_layer.duplicate_log`
+  (duplicate_id, pipeline_name, source_table, duplicate_key, duplicate_type, duplicate_count, detection_timestamp, action_taken)
+  SELECT
+    GENERATE_UUID(),
+    'cdc_orders',
+    'raw_layer.orders',
+    order_id,
+    'LOGICAL',
+    COUNT(*),
+    CURRENT_TIMESTAMP(),
+    'KEEP_LATEST'
+  FROM `project-a2f79f6e-db67-4726-be8.raw_layer.orders`
+  GROUP BY order_id
+  HAVING COUNT(*) > 1
+}
+
+WITH latest_changes AS (
+  SELECT * EXCEPT(rn)
+  FROM (
+    SELECT *,
+      ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY last_updated DESC) AS rn
+    FROM ${ref({schema: "raw_layer", name: "orders"})}
+  )
+  WHERE rn = 1
+)
+
+SELECT
+  order_id,
+  customer_id,
+  product_name,
+  quantity,
+  amount,
+  order_date,
+  status,
+  changetype,
+  last_updated,
+  CURRENT_TIMESTAMP() AS cdc_processed_at
+FROM latest_changes
+WHERE changetype != 'D'
+
+post_operations {
+  INSERT INTO `project-a2f79f6e-db67-4726-be8.audit_layer.pipeline_audit`
+  (audit_id, pipeline_name, table_name, load_type, start_time, end_time, duration_seconds, rows_processed, status, error_message, created_by)
+  SELECT
+    GENERATE_UUID(),
+    'cdc_orders',
+    'cdc_layer.orders',
+    'DELTA_LOAD',
+    CURRENT_TIMESTAMP(),
+    CURRENT_TIMESTAMP(),
+    0,
+    (SELECT COUNT(*) FROM ${self()}),
+    'SUCCESS',
+    NULL,
+    SESSION_USER()
+}
