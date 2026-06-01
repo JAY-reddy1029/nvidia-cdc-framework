@@ -206,6 +206,6 @@ Built as a hands-on learning project to prepare for production data engineering 
 Email: p.v.jay2003@gmail.com  
 Location: Hyderabad, India
 
-## Final Cloud Build Test (01/06/2026)
-- All permissions configured ✅
-- Cloud Build CI/CD ready for production 🚀
+## Approach B Cloud Build - Final Test (01/06/2026)
+- Using bash commands with Dataform CLI
+- Testing automated deployment pipeline
