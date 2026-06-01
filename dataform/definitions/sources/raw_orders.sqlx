@@ -1,8 +1,7 @@
 config {
-      type: "declaration",
-        database: "project-a2f79f6e-db67-4726-be8",
-          schema: "raw_layer",
-            name: "orders",
-              description: "Raw orders data from Acresoft - flat table with changetype I/U/D"
-              }
+  type: "declaration",
+  database: "project-a2f79f6e-db67-4726-be8",
+  schema: "raw_layer",
+  name: "orders",
+  description: "Raw orders data from Acresoft - flat table with order details"
 }
