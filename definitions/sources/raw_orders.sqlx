@@ -5,4 +5,3 @@ config {
             name: "orders",
               description: "Raw orders data from Acresoft - flat table with changetype I/U/D"
               }
-}
