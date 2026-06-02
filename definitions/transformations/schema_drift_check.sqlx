@@ -1,0 +1,65 @@
+config {
+      type: "operations",
+        schema: "cdc_layer",
+          name: "schema_drift_check",
+            description: "Runs schema drift detection and logs results - executed after pipelines",
+              tags: ["data_quality", "schema_drift"]
+              }
+
+              -- Schema Drift Detection: Compare expected vs actual schemas
+              -- Insert any detected drifts into schema_drift_log
+              INSERT INTO `project-a2f79f6e-db67-4726-be8.audit_layer.schema_drift_log`
+              (drift_id, dataset_name, table_name, drift_type, column_name, 
+               expected_value, actual_value, severity, detected_at)
+
+               WITH 
+               expected_schemas AS (
+                 SELECT
+                     dataset_name,
+                         table_name,
+                             column_name,
+                                 expected_data_type
+                                   FROM `project-a2f79f6e-db67-4726-be8.audit_layer.schema_registry`
+                                     WHERE is_active = TRUE
+                                     ),
+
+                                     actual_schemas AS (
+                                       SELECT
+                                           table_schema AS dataset_name,
+                                               table_name,
+                                                   column_name,
+                                                       data_type AS actual_data_type
+                                                         FROM `project-a2f79f6e-db67-4726-be8.cdc_layer.INFORMATION_SCHEMA.COLUMNS`
+                                                           WHERE table_name IN ('customers', 'orders')
+                                                           )
+
+                                                           SELECT
+                                                             GENERATE_UUID() AS drift_id,
+                                                               COALESCE(e.dataset_name, a.dataset_name) AS dataset_name,
+                                                                 COALESCE(e.table_name, a.table_name) AS table_name,
+                                                                   
+                                                                     CASE
+                                                                         WHEN e.column_name IS NULL THEN 'EXTRA_COLUMN'
+                                                                             WHEN a.column_name IS NULL THEN 'MISSING_COLUMN'
+                                                                                 WHEN e.expected_data_type != a.actual_data_type THEN 'TYPE_MISMATCH'
+                                                                                   END AS drift_type,
+                                                                                     
+                                                                                       COALESCE(e.column_name, a.column_name) AS column_name,
+                                                                                         e.expected_data_type AS expected_value,
+                                                                                           a.actual_data_type AS actual_value,
+                                                                                             
+                                                                                               CASE
+                                                                                                   WHEN e.column_name IS NULL THEN 'WARNING'
+                                                                                                       WHEN a.column_name IS NULL THEN 'CRITICAL'
+                                                                                                           WHEN e.expected_data_type != a.actual_data_type THEN 'CRITICAL'
+                                                                                                             END AS severity,
+                                                                                                               
+                                                                                                                 CURRENT_TIMESTAMP() AS detected_at
+                                                                                                                   
+                                                                                                                   FROM expected_schemas e
+                                                                                                                   FULL OUTER JOIN actual_schemas a
+                                                                                                                     ON e.dataset_name = a.dataset_name
+                                                                                                                       AND e.table_name = a.table_name
+                                                                                                                         AND e.column_name = a.column_name
+                                                                                                                         WHERE 
+                                                                                                                           COALESCE(e.expected_data_type, '') != COALESCE(a.actual_data_type, '');

@@ -1,0 +1,49 @@
+config {
+      type: "table",
+        schema: "cdc_layer",
+          name: "customers",
+            description: "CDC customers - Full Load with clustering optimization",
+              tags: ["full_load", "daily"],
+                
+                  bigquery: {
+                      clusterBy: ["country", "customer_type"]
+                        },
+                          
+                            assertions: {
+                                uniqueKey: ["customer_id"],
+                                    nonNull: ["customer_id", "customer_name", "country"],
+                                        rowConditions: [
+                                              "credit_limit >= 0",
+                                                    "customer_type IN ('Retail', 'Wholesale')"
+                                                        ]
+                                                          }
+                                                          }
+
+                                                          SELECT
+                                                            customer_id,
+                                                              customer_name,
+                                                                city,
+                                                                  country,
+                                                                    customer_type,
+                                                                      credit_limit,
+                                                                        created_date,
+                                                                          last_updated,
+                                                                            CURRENT_TIMESTAMP() AS cdc_processed_at
+                                                                            FROM ${ref({schema: "raw_layer", name: "customers"})}
+
+                                                                            post_operations {
+                                                                              INSERT INTO `project-a2f79f6e-db67-4726-be8.audit_layer.pipeline_audit`
+                                                                                  (audit_id, pipeline_name, table_name, load_type, start_time, end_time, duration_seconds, rows_processed, status, error_message, created_by)
+                                                                                    SELECT
+                                                                                        GENERATE_UUID(),
+                                                                                            'cdc_customers',
+                                                                                                'cdc_layer.customers',
+                                                                                                    'FULL_LOAD',
+                                                                                                        CURRENT_TIMESTAMP(),
+                                                                                                            CURRENT_TIMESTAMP(),
+                                                                                                                0,
+                                                                                                                    (SELECT COUNT(*) FROM ${self()}),
+                                                                                                                        'SUCCESS',
+                                                                                                                            NULL,
+                                                                                                                                SESSION_USER()
+                                                                                                                                }
