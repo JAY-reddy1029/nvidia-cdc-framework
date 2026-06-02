@@ -1,7 +1,0 @@
-config {
-  type: "declaration",
-  database: "project-a2f79f6e-db67-4726-be8",
-  schema: "raw_layer",
-  name: "customers",
-  description: "Raw customer master data from Acresoft - mim SAP extraction"
-}
