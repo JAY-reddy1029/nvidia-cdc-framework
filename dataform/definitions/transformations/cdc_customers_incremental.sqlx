@@ -1,0 +1,67 @@
+config {
+  type: "table",
+  schema: "cdc_layer",
+  name: "customers_incremental",
+  description: "Incremental load of customers - only new/changed records",
+  partitionBy: "created_date",
+  clusterBy: ["country", "customer_type"],
+  assertions: {
+    uniqueKey: ["customer_id"],
+    nonNull: ["customer_id", "customer_name"]
+  }
+}
+
+-- Step 1: Get last load timestamp
+DECLARE last_load_time TIMESTAMP DEFAULT (
+  SELECT COALESCE(last_load_timestamp, '2026-01-01 00:00:00')
+  FROM `${self.project.id}`.audit_layer.incremental_checkpoint
+  WHERE table_name = 'customers'
+);
+
+-- Step 2: Load only NEW or CHANGED customers
+WITH new_customers AS (
+  SELECT
+    customer_id,
+    customer_name,
+    city,
+    country,
+    customer_type,
+    credit_limit,
+    created_date,
+    CURRENT_TIMESTAMP() AS loaded_at
+  FROM `${self.project.id}`.raw_layer.customers
+  WHERE created_date > last_load_time  -- Only records after last load
+),
+
+-- Step 3: Deduplicate (keep latest version if duplicate)
+deduped AS (
+  SELECT
+    * EXCEPT(row_num)
+  FROM (
+    SELECT
+      *,
+      ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_date DESC) AS row_num
+    FROM new_customers
+  )
+  WHERE row_num = 1
+)
+
+SELECT * FROM deduped;
+
+-- Step 4: Log to audit table
+POST_OPERATIONS {
+  INSERT INTO `${self.project.id}`.audit_layer.pipeline_audit 
+    (table_name, status, rows_processed, execution_timestamp, details)
+  VALUES (
+    'customers_incremental',
+    'COMPLETED',
+    @@row_count,
+    CURRENT_TIMESTAMP(),
+    CONCAT('Incremental load from last checkpoint. Rows loaded: ', @@row_count)
+  );
+
+  -- Step 5: Update checkpoint with current timestamp
+  UPDATE `${self.project.id}`.audit_layer.incremental_checkpoint
+  SET last_load_timestamp = CURRENT_TIMESTAMP()
+  WHERE table_name = 'customers';
+}
