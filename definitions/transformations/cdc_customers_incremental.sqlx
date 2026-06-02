@@ -1,0 +1,63 @@
+config {
+    type: "table",
+      schema: "cdc_layer",
+        name: "customers_incremental",
+          description: "Incremental load of customers - only new/changed records",
+            partitionBy: "created_date",
+              clusterBy: ["country", "customer_type"],
+                assertions: {
+                    uniqueKey: ["customer_id"],
+                        nonNull: ["customer_id", "customer_name"]
+                          }
+                          }
+
+                          DECLARE last_load_time TIMESTAMP DEFAULT (
+                            SELECT COALESCE(last_load_timestamp, '2026-01-01 00:00:00')
+                              FROM `project-a2f79f6e-db67-4726-be8`.audit_layer.incremental_checkpoint
+                                WHERE table_name = 'customers'
+                                );
+
+                                WITH new_customers AS (
+                                  SELECT
+                                      customer_id,
+                                          customer_name,
+                                              city,
+                                                  country,
+                                                      customer_type,
+                                                          credit_limit,
+                                                              created_date,
+                                                                  CURRENT_TIMESTAMP() AS loaded_at
+                                                                    FROM `project-a2f79f6e-db67-4726-be8`.raw_layer.customers
+                                                                      WHERE CAST(created_date AS TIMESTAMP) > last_load_time
+                                                                      ),
+
+                                                                      deduped AS (
+                                                                        SELECT
+                                                                            * EXCEPT(row_num)
+                                                                              FROM (
+                                                                                  SELECT
+                                                                                        *,
+                                                                                              ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_date DESC) AS row_num
+                                                                                                  FROM new_customers
+                                                                                                    )
+                                                                                                      WHERE row_num = 1
+                                                                                                      )
+
+                                                                                                      SELECT * FROM deduped
+
+                                                                                                      post_operations {
+                                                                                                        INSERT INTO `project-a2f79f6e-db67-4726-be8`.audit_layer.pipeline_audit 
+                                                                                                            (pipeline_name, table_name, load_type, start_time, rows_processed, status)
+                                                                                                              VALUES (
+                                                                                                                  'cdc_customers_incremental',
+                                                                                                                      'customers_incremental',
+                                                                                                                          'INCREMENTAL',
+                                                                                                                              CURRENT_TIMESTAMP(),
+                                                                                                                                  @@row_count,
+                                                                                                                                      'SUCCESS'
+                                                                                                                                        );
+
+                                                                                                                                          UPDATE `project-a2f79f6e-db67-4726-be8`.audit_layer.incremental_checkpoint
+                                                                                                                                            SET last_load_timestamp = CURRENT_TIMESTAMP()
+                                                                                                                                              WHERE table_name = 'customers';
+                                                                                                                                              }

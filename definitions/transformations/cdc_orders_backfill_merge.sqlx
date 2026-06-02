@@ -1,4 +1,4 @@
-config {
+ config {
       type: "operations",
         schema: "cdc_layer",
           name: "cdc_orders_backfill_merge",
