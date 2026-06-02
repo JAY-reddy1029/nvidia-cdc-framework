@@ -206,26 +206,3 @@ Built as a hands-on learning project to prepare for production data engineering 
 Email: p.v.jay2003@gmail.com  
 Location: Hyderabad, India
 
-## Approach B Cloud Build - Final Test (01/06/2026)
-- Using bash commands with Dataform CLI
-- Testing automated deployment pipeline
-
-## Approach B Cloud Build - NPM Container Test (01/06/2026 - v2)
-- Using npm container for all bash commands
-- Dataform CLI available in all steps
-
-## Approach B Cloud Build - Final Working Version (01/06/2026)
-- Single step compile + deploy
-- Service account with all required roles
-- Ready for production
-
-## Approach B Cloud Build - Working Deploy Command (01/06/2026)
-- Using dataform run --release-config
-- Compile + Deploy in single step
-- Testing automated CI/CD
-
-## Approach B Cloud Build - CI/CD Validation Pipeline (01/06/2026)
-- GitHub push → Cloud Build trigger
-- Compile validation on every commit to main
-- Dataform native scheduling (Approach A) handles deployments
-- Combined CI/CD workflow for reliability
